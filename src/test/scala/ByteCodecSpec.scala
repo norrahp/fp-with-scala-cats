@@ -6,6 +6,7 @@ import org.typelevel.discipline.Laws
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
 import java.nio.ByteBuffer
+import scala.util.Try
 
 object Tests {
 
@@ -36,7 +37,15 @@ object Tests {
     )
   }
 
-  object IntByteCodec extends ByteCodec[Int] {
+  object ByteCodecTests {
+    def apply[A](implicit bc: ByteCodec[A]): ByteCodecTests[A] = new ByteCodecTests[A] {
+      override def laws: ByteCodecLaws[A] = new ByteCodecLaws[A] {
+        override def codec: ByteCodec[A] = bc
+      }
+    }
+  }
+
+  implicit object IntByteCodec extends ByteCodec[Int] {
     override def encode(a: Int): Array[Byte] = {
       val bb = ByteBuffer.allocate(4)
       bb.putInt(a)
@@ -54,18 +63,15 @@ object Tests {
     }
   }
 
-  object IntByteCodecLaws extends ByteCodecLaws[Int] {
-    override def codec: ByteCodec[Int] = IntByteCodec
+  implicit object StringByteCodec extends ByteCodec[String] {
+    override def encode(a: String): Array[Byte] = a.getBytes
+    override def decode(bytes: Array[Byte]): Option[String] = Try(new String(bytes)).toOption
   }
-
-  object IntByteCodecTests extends ByteCodecTests[Int] {
-    override def laws: ByteCodecLaws[Int] = IntByteCodecLaws
-  }
-
 }
 
 import Tests._
 
 class ByteCodecSpec extends AnyFunSuite with Configuration with FunSuiteDiscipline {
-  checkAll("ByteCodec[Int]", IntByteCodecTests.byteCodec)
+  checkAll("ByteCodec[Int]", ByteCodecTests[Int].byteCodec)
+  checkAll("ByteCodec[String]", ByteCodecTests[String].byteCodec)
 }
