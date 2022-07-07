@@ -1,0 +1,26 @@
+import cats._
+import cats.implicits._
+import cats.data._
+
+case class Stream[A](head: A, tail: Eval[Stream[A]]) {
+  def take(n: Int): Eval[List[A]] = {
+    if (n == 0) Eval.now(Nil)
+    else tail.flatMap(sa => sa.take(n - 1)).map(rest => head :: rest)
+  }
+}
+
+object Stream {
+  def iterate[A](initial: A)(f: A => A): Stream[A] =
+    Stream(initial, Eval.later(iterate(f(initial))(f)))
+
+  implicit val streamFunctor: Functor[Stream] = new Functor[Stream] {
+    override def map[A, B](fa: Stream[A])(f: A => B): Stream[B] =
+      Stream(f(fa.head), fa.tail.map(sa => map(sa)(f)))
+  }
+}
+
+import Stream._
+val nats = iterate(1)(_ + 1)
+nats.take(1000).value
+val evens = nats.map(_ * 2)
+evens.take(10000).value
