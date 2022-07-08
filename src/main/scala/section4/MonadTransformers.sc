@@ -34,3 +34,24 @@ ReaderT((_: AccountRepo) => "hello".asLeft[Int]).map(_ + 1).run(dummyRepo)
 ReaderT((_: AccountRepo) => "hello".asLeft[Int])
   .flatMap(n => (n + 1).pure[AccountOp])
   .run(dummyRepo)
+
+type ErrorOrOpt[A] =
+  OptionT[ErrorOr, A] // ErrorOr[Option[A]] -> Either[String, Option[A]]
+type AccountOpt2[A] = ReaderT[ErrorOrOpt, AccountRepo, A]
+
+5.pure[AccountOpt2].flatMap(n => (n + 1).pure[AccountOpt2]).run(dummyRepo).value
+
+5.pure[ErrorOrOpt].flatMap(n => (n + 1).pure[ErrorOrOpt])
+OptionT(Option(5).asRight[String]).flatMap(n => (n + 1).pure[ErrorOrOpt])
+OptionT(Option.empty[Int].asRight[String]).flatMap(n =>
+  (n + 1).pure[ErrorOrOpt]
+)
+OptionT("boom".asLeft[Option[Int]]).flatMap(n => (n + 1).pure[ErrorOrOpt])
+
+OptionT(Option(5).asRight[String]).subflatMap(n => Option(n + 1))
+OptionT("boom".asLeft[Option[Int]]).subflatMap(n => Option(n + 1))
+OptionT(Option.empty[Int].asRight[String]).subflatMap(n => Option(n + 1))
+
+OptionT(Option(5).asRight[String]).semiflatMap(n => Right(n + 1))
+
+OptionT(Option(5).asRight[String]).flatMapF(n => Right(Some(n + 1)))
